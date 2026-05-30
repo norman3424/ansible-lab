@@ -1,0 +1,8 @@
+---
+env_name: "staging"
+nginx_listen_port: 8081
+app_run_port: 5001
+app_dir_path: "/var/www/staging_app"
+app_debug_mode: "True"
+db_connection_url: "sqlite:////var/www/staging_app/staging_db.sqlite"
+db_port: 5432

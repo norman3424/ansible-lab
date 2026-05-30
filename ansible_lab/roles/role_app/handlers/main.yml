@@ -1,0 +1,5 @@
+---
+- name: Restart Application Service
+  service:
+    name: "{{ env_name }}_app"
+    state: restarted

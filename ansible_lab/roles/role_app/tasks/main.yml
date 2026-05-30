@@ -1,0 +1,70 @@
+---
+- name: Wait for core Database socket port to be active
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ db_port }}"
+    timeout: 45
+    state: started
+  tags: [deploy, app]
+
+- name: Execute initial database schema migrations
+  shell: "echo 'CREATE TABLE IF NOT EXISTS users (id INT, name TEXT);' > {{ app_dir_path }}/migration_v1.sql"
+  args:
+    creates: "{{ app_dir_path }}/migration_v1.sql"
+  tags: [deploy, app]
+
+- name: Deployment block with active error handling
+  block:
+    - name: Try to install app system dependencies
+      apt:
+        name:
+          - python3
+          - python3-pip
+        state: present
+        update_cache: yes
+      tags: [install, app]
+
+  rescue:
+    - name: Clean apt/dpkg locks if primary installation failed
+      shell: "rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock"
+      tags: [install, app]
+
+    - name: Retry system dependencies installation
+      apt:
+        name:
+          - python3
+          - python3-pip
+        state: present
+      tags: [install, app]
+
+  always:
+    - name: Log the deployment attempt status
+      debug:
+        msg: "Dependency verification process finished for environment: {{ env_name }}"
+      tags: [always, app]
+
+- name: Create application directory
+  file:
+    path: "{{ app_dir_path }}"
+    state: directory
+    mode: '0755'
+  tags: [deploy, app]
+
+- name: Generate systemd service file from template
+  template:
+    src: app_service.j2
+    dest: /etc/systemd/system/{{ env_name }}_app.service
+  notify: Restart Application Service
+  tags: [config, app]
+
+- name: Force systemd daemon reload
+  systemd:
+    daemon_reload: yes
+  tags: [config, app]
+
+- name: Ensure app service is enabled and started
+  service:
+    name: "{{ env_name }}_app"
+    state: started
+    enabled: yes
+  tags: [deploy, app]

@@ -1,0 +1,36 @@
+---
+- name: Extract loopback IP address using Jinja2 filter chain
+  set_fact:
+    discovered_node_ip: "{{ ansible_facts['all_ipv4_addresses'] | select('match', '^127\\.') | first | default(ansible_default_ipv4.address) }}"
+  tags: [config, web]
+
+- name: Display discovered and filtered node target IP
+  debug:
+    msg: "The dynamic target IP for configuration is: {{ discovered_node_ip }}"
+  tags: [config, web]
+
+- name: Test custom Python filter by masking discovered IP
+  debug:
+    msg: "Secured masked IP for public logs: {{ discovered_node_ip | mask_ip }}"
+  tags: [config, web]
+
+- name: Ensure Nginx web server is installed
+  apt:
+    name: nginx
+    state: present
+  tags: [install, web]
+
+- name: Configure Nginx site from template
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/{{ env_name }}_app.conf
+  notify: Restart Nginx Web Server
+  tags: [config, web]
+
+- name: Enable Nginx config via symlink
+  file:
+    src: /etc/nginx/sites-available/{{ env_name }}_app.conf
+    dest: /etc/nginx/sites-enabled/{{ env_name }}_app.conf
+    state: link
+  notify: Restart Nginx Web Server
+  tags: [config, web]

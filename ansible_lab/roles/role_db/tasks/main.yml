@@ -1,0 +1,35 @@
+---
+- name: Create database system storage directory
+  file:
+    path: "/var/lib/{{ env_name }}_db_data"
+    state: directory
+    mode: '0700'
+  tags: [install, db]
+
+- name: Create systemd unit layout for background database process
+  copy:
+    dest: /etc/systemd/system/{{ env_name }}_db.service
+    content: |
+      [Unit]
+      Description=Mock Database Daemon Service for {{ env_name }}
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/bin/python3 -m http.server {{ db_port }}
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+  tags: [config, db]
+
+- name: Reload systemd manager configuration for database service
+  systemd:
+    daemon_reload: yes
+  tags: [config, db]
+
+- name: Ensure mock database service is started and enabled
+  service:
+    name: "{{ env_name }}_db"
+    state: started
+    enabled: yes
+  tags: [deploy, db]

@@ -1,0 +1,13 @@
+[Unit]
+Description=Python Application Server for {{ env_name | title }}
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory={{ app_dir_path }}
+ExecStart=/usr/bin/python3 -m http.server {{ app_run_port }}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
